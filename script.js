@@ -138,7 +138,7 @@ function cardHTML(item){
 
   const preview = hasUrl
     ? `<div class="skeleton" data-skeleton></div>
-       <iframe data-src="${escapeAttr(item.url)}" loading="lazy" tabindex="-1" aria-hidden="true" referrerpolicy="no-referrer"></iframe>
+       <img class="preview-img" data-src="${escapeAttr(thumbnailUrl(item.url))}" loading="lazy" alt="${title} 미리보기" />
        <div class="preview-fallback" data-fallback hidden>
          <span class="icon">🖼️</span>
          <span>미리보기를 불러올 수 없어요</span>
@@ -181,12 +181,17 @@ grid.addEventListener('click', e=>{
 });
 
 /* ---------------------------------------------------------- */
-/* preview iframe loading                                      */
+/* preview thumbnail loading                                   */
 /* ---------------------------------------------------------- */
 
+/* 외부 스크린샷 서비스(thum.io, 무료/키 불필요)로 작품 URL의 썸네일을 생성 */
+function thumbnailUrl(url){
+  return `https://image.thum.io/get/width/600/crop/800/noanimate/${encodeURIComponent(url)}`;
+}
+
 function mountPreviews(){
-  grid.querySelectorAll('.preview-wrap iframe[data-src]').forEach(iframe => {
-    const wrap = iframe.closest('.preview-wrap');
+  grid.querySelectorAll('.preview-wrap img[data-src]').forEach(img => {
+    const wrap = img.closest('.preview-wrap');
     const skeleton = wrap.querySelector('[data-skeleton]');
     const fallback = wrap.querySelector('[data-fallback]');
 
@@ -194,20 +199,19 @@ function mountPreviews(){
 
     function showFallback(){
       clearTimeout(timer);
-      iframe.remove();
+      img.remove();
       if(skeleton) skeleton.remove();
       if(fallback) fallback.hidden = false;
     }
 
-    iframe.addEventListener('load', () => {
+    img.addEventListener('load', () => {
       clearTimeout(timer);
-      // 일부 사이트는 X-Frame-Options 때문에 load는 되지만 빈 화면일 수 있음 — 그대로 표시
-      iframe.classList.add('loaded');
+      img.classList.add('loaded');
       if(skeleton) skeleton.remove();
     });
-    iframe.addEventListener('error', showFallback);
+    img.addEventListener('error', showFallback);
 
-    iframe.src = iframe.dataset.src;
+    img.src = img.dataset.src;
   });
 }
 
