@@ -15,48 +15,42 @@
 <header class="nav">
   <div class="nav-inner">
     <div class="brand">
-      <span class="emoji">🎨</span>
+      <span class="mark">26</span>
       <span>
         <b>HYFL Portfolio Gallery</b>
-        <span class="sub" style="display:block">2026</span>
+        <span class="sub">Student Web Exhibition</span>
       </span>
     </div>
-
-    <label class="search">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
-      <input id="search" type="search" placeholder="이름 · 작품 제목 검색" autocomplete="off" aria-label="작품 검색" />
-    </label>
   </div>
 </header>
 
 <!-- ============================ HERO ============================ -->
 <section class="hero">
-  <span class="kicker">✨ 2026 Exhibition</span>
-  <h1>2026 HYFL Portfolio Gallery</h1>
-  <p>AI와 함께 만든 우리들의 자기소개 웹앱 전시관 — 우리 반 친구들의 작품을 구경해 보세요!</p>
+  <div class="hero-inner">
+    <span class="kicker">Portfolio Exhibition</span>
+    <h1>2026 HYFL Portfolio Gallery</h1>
+    <p>AI와 함께 만든 우리들의 자기소개 웹앱 전시관입니다. 학생들이 직접 제작한 작품을 둘러보세요.</p>
 
-  <div class="stats">
-    <div class="stat">
-      <div class="num pink" id="stat-works">0</div>
-      <div class="label">전체 작품 수</div>
-    </div>
-    <div class="stat">
-      <div class="num purple" id="stat-classes">0</div>
-      <div class="label">참여 반 수</div>
-    </div>
-    <div class="stat">
-      <div class="num blue">💛</div>
-      <div class="label">우리들의 이야기</div>
+    <div class="badges">
+      <span class="badge">전체 작품 <b id="stat-works">0</b>개</span>
+      <span class="badge">참여 반 <b id="stat-classes">0</b>개</span>
+      <span class="badge live"><span class="dot"></span>실시간 시트 연동</span>
     </div>
   </div>
 </section>
 
-<!-- ============================ CLASS FILTERS ============================ -->
-<nav class="filters" id="filters" aria-label="반 필터"></nav>
+<!-- ============================ SEARCH + FILTERS ============================ -->
+<div class="controls">
+  <label class="search">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+    <input id="search" type="search" placeholder="이름 · 작품 제목 · 설명 검색" autocomplete="off" aria-label="작품 검색" />
+  </label>
+  <nav class="filters" id="filters" aria-label="반 필터"></nav>
+</div>
 
 <!-- ============================ SECTION HEAD ============================ -->
 <div class="section-head">
-  <h2><span class="pin">🖼️</span>작품 전시</h2>
+  <h2>작품 전시</h2>
   <div class="count" id="section-count"></div>
 </div>
 
@@ -66,7 +60,7 @@
 </main>
 
 <footer class="footer">
-  <div class="fw">🎓 2026 HYFL Portfolio Gallery</div>
+  <div class="fw">HYFL Portfolio Gallery</div>
   <p>AI와 함께 만든 우리들의 자기소개 웹앱 전시관</p>
   <div class="meta">Built with HTML · CSS · JavaScript</div>
 </footer>

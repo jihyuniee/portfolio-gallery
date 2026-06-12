@@ -2,10 +2,14 @@
    2026 HYFL Portfolio Gallery — script.js
    ============================================================ */
 
-/* ⚠️ Google Apps Script Web App URL을 여기에 입력하세요.
-   배포 방법: Apps Script 편집기 > 배포 > 새 배포 > 웹 앱
-   (실행 대상: 나, 액세스 권한: 모든 사용자) 후 생성된 URL을 아래에 붙여넣기 */
+/* Google Apps Script Web App URL */
 const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxIdTswZ_itVr10CBajBKSOuB3SfnyO2ugZeU0Ke6bysOkL558l9Z0SmaW0b8I6kp7O/exec";
+
+/* 최근 등록된 작품으로 표시할 개수 (시트 맨 아래쪽 N개) */
+const NEW_COUNT = 3;
+
+/* 미리보기 iframe 로딩 제한 시간 (ms) — 초과 시 fallback 표시 */
+const PREVIEW_TIMEOUT = 6000;
 
 const grid = document.getElementById('grid');
 const filtersEl = document.getElementById('filters');
@@ -16,12 +20,9 @@ let classNames = [];
 let currentClass = "전체";
 let query = "";
 
-/* 아바타용 파스텔 컬러 + 이니셜 */
-const AVATAR_COLORS = [
-  '#FF8FC0', '#A78BFA', '#6EC6FF', '#FFB86B', '#6EE7C9', '#FF9E9E', '#9CCC65', '#7C9CFF',
-];
-function hash(s){let h=0;for(let i=0;i<s.length;i++){h=(h<<5)-h+s.charCodeAt(i);h|=0;}return Math.abs(h);}
-function initial(name){ return (name||'').trim().slice(0,1) || '?'; }
+/* ---------------------------------------------------------- */
+/* helpers                                                     */
+/* ---------------------------------------------------------- */
 
 function isValidUrl(url){
   if(!url) return false;
@@ -31,87 +32,14 @@ function isValidUrl(url){
   }catch{ return false; }
 }
 
-function cardHTML(item){
-  const color = AVATAR_COLORS[hash(item.studentName)%AVATAR_COLORS.length];
-  const desc = item.description ? `<p class="desc">${escapeHTML(item.description)}</p>` : '';
-  const title = item.title ? `<div class="title">${escapeHTML(item.title)}</div>` : '';
-
-  let btn;
-  if(isValidUrl(item.url)){
-    btn = `<a class="go-btn" href="${escapeAttr(item.url)}" target="_blank" rel="noopener noreferrer">작품 보러가기 →</a>`;
-  } else {
-    btn = `<span class="go-btn disabled">링크 확인 필요</span>`;
-  }
-
-  return `<article class="card">
-    <div class="top">
-      <div class="avatar" style="background:${color}">${escapeHTML(initial(item.studentName))}</div>
-      <div>
-        <div class="name">${escapeHTML(item.studentName)}</div>
-        <span class="class-tag">${escapeHTML(item.className)}</span>
-      </div>
-    </div>
-    ${title}
-    ${desc}
-    ${btn}
-  </article>`;
-}
-
 function escapeHTML(str){
-  return String(str).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  return String(str ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
 function escapeAttr(str){ return escapeHTML(str); }
 
-function currentList(){
-  let list = currentClass==="전체" ? allWorks : allWorks.filter(w=>w.className===currentClass);
-  if(query){
-    const q = query.toLowerCase();
-    list = list.filter(w =>
-      (w.studentName||'').toLowerCase().includes(q) ||
-      (w.title||'').toLowerCase().includes(q)
-    );
-  }
-  return list;
-}
-
-function reveal(){
-  const cards = [...grid.querySelectorAll('.card')];
-  if(reduce){ cards.forEach(c=>c.classList.add('in')); return; }
-  cards.forEach((c,i)=> setTimeout(()=>c.classList.add('in'), Math.min(i,16)*40));
-}
-
-function render(){
-  const list = currentList();
-  document.getElementById('section-count').innerHTML = `<b>${list.length}</b>개 작품`;
-
-  if(list.length===0){
-    const msg = query
-      ? {icon:'🔍', b:'검색 결과가 없어요', s:'다른 이름이나 작품 제목으로 다시 찾아보세요.'}
-      : {icon:'🎨', b:'아직 전시된 작품이 없어요', s:'곧 멋진 작품들이 채워질 예정이에요!'};
-    grid.innerHTML = `<div class="state"><div class="icon">${msg.icon}</div><b>${msg.b}</b><span>${msg.s}</span></div>`;
-    return;
-  }
-
-  grid.innerHTML = list.map(cardHTML).join('');
-  reveal();
-}
-
-function renderFilters(){
-  const buttons = ["전체", ...classNames].map(name => {
-    const pressed = name===currentClass ? 'true' : 'false';
-    return `<button class="filter-btn" data-class="${escapeAttr(name)}" aria-pressed="${pressed}">${escapeHTML(name)}</button>`;
-  }).join('');
-  filtersEl.innerHTML = buttons;
-}
-
-function renderStats(){
-  document.getElementById('stat-works').textContent = allWorks.length;
-  document.getElementById('stat-classes').textContent = classNames.length;
-}
-
-function showState(icon, title, sub){
-  grid.innerHTML = `<div class="state"><div class="icon">${icon}</div><b>${title}</b><span>${sub}</span></div>`;
-}
+/* ---------------------------------------------------------- */
+/* data loading                                                */
+/* ---------------------------------------------------------- */
 
 async function loadData(){
   showState('⏳', '작품을 불러오는 중이에요...', '잠시만 기다려 주세요.');
@@ -126,9 +54,14 @@ async function loadData(){
     if(!res.ok) throw new Error('bad response');
     const data = await res.json();
 
-    allWorks = (Array.isArray(data) ? data : [])
+    const items = (Array.isArray(data) ? data : [])
       .filter(item => item && item.studentName && item.studentName.trim() && item.url && item.url.trim());
 
+    // 최신 등록 순으로 정렬 (시트 행 순서가 클수록 최근 등록)
+    items.sort((a, b) => (b.row ?? 0) - (a.row ?? 0));
+    items.forEach((item, idx) => { item.isNew = idx < NEW_COUNT; });
+
+    allWorks = items;
     classNames = [...new Set(allWorks.map(w=>w.className).filter(Boolean))];
 
     renderStats();
@@ -138,6 +71,159 @@ async function loadData(){
     showState('😢', '작품 목록을 불러오지 못했습니다.', '잠시 후 다시 새로고침해 주세요.');
   }
 }
+
+/* ---------------------------------------------------------- */
+/* rendering                                                   */
+/* ---------------------------------------------------------- */
+
+function renderStats(){
+  document.getElementById('stat-works').textContent = allWorks.length;
+  document.getElementById('stat-classes').textContent = classNames.length;
+}
+
+function renderFilters(){
+  const buttons = ["전체", ...classNames].map(name => {
+    const pressed = name===currentClass ? 'true' : 'false';
+    return `<button class="filter-btn" data-class="${escapeAttr(name)}" aria-pressed="${pressed}">${escapeHTML(name)}</button>`;
+  }).join('');
+  filtersEl.innerHTML = buttons;
+}
+
+function currentList(){
+  let list = currentClass==="전체" ? allWorks : allWorks.filter(w=>w.className===currentClass);
+  if(query){
+    const q = query.toLowerCase();
+    list = list.filter(w =>
+      (w.studentName||'').toLowerCase().includes(q) ||
+      (w.title||'').toLowerCase().includes(q) ||
+      (w.description||'').toLowerCase().includes(q)
+    );
+  }
+  return list;
+}
+
+function showState(icon, title, sub){
+  grid.innerHTML = `<div class="state"><div class="icon">${icon}</div><b>${title}</b><span>${sub}</span></div>`;
+}
+
+function render(){
+  const list = currentList();
+  document.getElementById('section-count').innerHTML = `<b>${list.length}</b>개 작품`;
+
+  if(list.length===0){
+    const msg = query
+      ? {icon:'🔍', b:'검색 결과가 없어요', s:'다른 이름이나 작품 제목으로 다시 찾아보세요.'}
+      : {icon:'🖼️', b:'아직 전시된 작품이 없어요', s:'곧 멋진 작품들이 채워질 예정이에요!'};
+    showState(msg.icon, msg.b, msg.s);
+    return;
+  }
+
+  grid.innerHTML = list.map(cardHTML).join('');
+  reveal();
+  mountPreviews();
+}
+
+/* ---------------------------------------------------------- */
+/* card markup                                                 */
+/* ---------------------------------------------------------- */
+
+function cardHTML(item){
+  const hasUrl = isValidUrl(item.url);
+  const title = item.title ? escapeHTML(item.title) : `${escapeHTML(item.studentName)}의 자기소개 웹앱`;
+  const desc = item.description
+    ? `<p class="card-desc">${escapeHTML(item.description)}</p>`
+    : '';
+  const number = item.studentNumber ? `${escapeHTML(item.studentNumber)} · ` : '';
+  const newBadge = item.isNew ? `<span class="new-badge">NEW</span>` : '';
+
+  const preview = hasUrl
+    ? `<div class="skeleton" data-skeleton></div>
+       <iframe data-src="${escapeAttr(item.url)}" loading="lazy" tabindex="-1" aria-hidden="true" referrerpolicy="no-referrer"></iframe>
+       <div class="preview-fallback" data-fallback hidden>
+         <span class="icon">🖼️</span>
+         <span>미리보기를 불러올 수 없어요</span>
+       </div>`
+    : `<div class="preview-fallback">
+         <span class="icon">🔗</span>
+         <span>링크 확인 필요</span>
+       </div>`;
+
+  const btn = hasUrl
+    ? `<a class="go-btn" href="${escapeAttr(item.url)}" target="_blank" rel="noopener noreferrer">작품 보러가기 →</a>`
+    : `<span class="go-btn disabled">링크 확인 필요</span>`;
+
+  return `<article class="card" ${hasUrl?`data-url="${escapeAttr(item.url)}"`:''}>
+    <div class="preview-wrap">
+      ${newBadge}
+      ${preview}
+    </div>
+    <div class="card-body">
+      <div class="card-head">
+        <div>
+          <div class="card-title">${title}</div>
+          <div class="card-meta">
+            <span class="class-tag">${escapeHTML(item.className)}</span>
+            <span class="student-info">${number}${escapeHTML(item.studentName)}</span>
+          </div>
+        </div>
+      </div>
+      ${desc}
+      ${btn}
+    </div>
+  </article>`;
+}
+
+/* 카드(미리보기 영역) 클릭 시 새 탭으로 이동 */
+grid.addEventListener('click', e=>{
+  if(e.target.closest('a, button')) return;
+  const card = e.target.closest('.card[data-url]');
+  if(card) window.open(card.dataset.url, '_blank', 'noopener');
+});
+
+/* ---------------------------------------------------------- */
+/* preview iframe loading                                      */
+/* ---------------------------------------------------------- */
+
+function mountPreviews(){
+  grid.querySelectorAll('.preview-wrap iframe[data-src]').forEach(iframe => {
+    const wrap = iframe.closest('.preview-wrap');
+    const skeleton = wrap.querySelector('[data-skeleton]');
+    const fallback = wrap.querySelector('[data-fallback]');
+
+    const timer = setTimeout(() => showFallback(), PREVIEW_TIMEOUT);
+
+    function showFallback(){
+      clearTimeout(timer);
+      iframe.remove();
+      if(skeleton) skeleton.remove();
+      if(fallback) fallback.hidden = false;
+    }
+
+    iframe.addEventListener('load', () => {
+      clearTimeout(timer);
+      // 일부 사이트는 X-Frame-Options 때문에 load는 되지만 빈 화면일 수 있음 — 그대로 표시
+      iframe.classList.add('loaded');
+      if(skeleton) skeleton.remove();
+    });
+    iframe.addEventListener('error', showFallback);
+
+    iframe.src = iframe.dataset.src;
+  });
+}
+
+/* ---------------------------------------------------------- */
+/* reveal animation                                            */
+/* ---------------------------------------------------------- */
+
+function reveal(){
+  const cards = [...grid.querySelectorAll('.card')];
+  if(reduce){ cards.forEach(c=>c.classList.add('in')); return; }
+  cards.forEach((c,i)=> setTimeout(()=>c.classList.add('in'), Math.min(i,16)*40));
+}
+
+/* ---------------------------------------------------------- */
+/* events                                                      */
+/* ---------------------------------------------------------- */
 
 filtersEl.addEventListener('click', e=>{
   const btn = e.target.closest('.filter-btn'); if(!btn) return;

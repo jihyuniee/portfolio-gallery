@@ -18,6 +18,7 @@ const SHEET_ID = "11PCEcOCjOpgvsirb6lBp1WyZflEafmvL1wyMBz3kl88";
 // 시트의 헤더(열 이름)가 다를 경우 여기만 수정하면 됩니다.
 // key: 결과 JSON 필드명, value: 시트의 헤더 텍스트
 const COLUMN_MAP = {
+  studentNumber: "학번",
   studentName: "이름",
   title: "",            // 이 시트에는 작품 제목 컬럼이 없음
   description: "",      // 이 시트에는 한 줄 소개 컬럼이 없음
@@ -43,6 +44,7 @@ function doGet(e) {
     for (let i = 1; i < values.length; i++) {
       const row = values[i];
 
+      const studentNumber = colIndex.studentNumber >= 0 ? String(row[colIndex.studentNumber] || "").trim() : "";
       const studentName = colIndex.studentName >= 0 ? String(row[colIndex.studentName] || "").trim() : "";
       const title = colIndex.title >= 0 ? String(row[colIndex.title] || "").trim() : "";
       const description = colIndex.description >= 0 ? String(row[colIndex.description] || "").trim() : "";
@@ -53,10 +55,12 @@ function doGet(e) {
 
       result.push({
         className: className,
+        studentNumber: studentNumber,
         studentName: studentName,
         title: title,
         description: description,
         url: url,
+        row: i, // 시트 내 행 순서 (정렬용)
       });
     }
   });
