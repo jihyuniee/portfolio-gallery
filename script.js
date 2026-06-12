@@ -163,12 +163,7 @@ function cardHTML(item){
   const preview = hasUrl
     ? `<div class="skeleton" data-skeleton></div>
        <div class="iframe-scale" data-frame-host>
-         <iframe data-src="${escapeAttr(item.url)}" loading="lazy" tabindex="-1" aria-hidden="true" referrerpolicy="no-referrer" sandbox="allow-scripts allow-same-origin allow-forms allow-popups"></iframe>
-       </div>
-       <div class="preview-fallback" data-fallback hidden>
-         <span class="icon">🖼️</span>
-         <span>미리보기를 지원하지 않는 작품</span>
-         <a class="go-btn" href="${escapeAttr(item.url)}" target="_blank" rel="noopener noreferrer">클릭하여 작품 보기 →</a>
+         <iframe data-src="${escapeAttr(item.url)}" loading="lazy" tabindex="-1" aria-hidden="true" referrerpolicy="no-referrer"></iframe>
        </div>`
     : `<div class="preview-fallback">
          <span class="icon">🔗</span>
@@ -222,22 +217,20 @@ const previewObserver = new IntersectionObserver((entries, observer) => {
 function loadPreview(iframe){
   const wrap = iframe.closest('.preview-wrap');
   const skeleton = wrap.querySelector('[data-skeleton]');
-  const fallback = wrap.querySelector('[data-fallback]');
 
-  // cross-origin iframe은 contentWindow/contentDocument 접근이 차단되므로
-  // load 이벤트만으로 성공 처리하고, 네트워크 자체가 실패한 경우(error)에만 대체 화면을 띄운다.
+  // cross-origin iframe은 load/error 이벤트만으로 내부 렌더 성공 여부를 정확히 알 수 없으므로,
+  // URL이 정상인 카드는 절대 "미리보기 미지원" 같은 실패 화면으로 대체하지 않는다.
+  // load가 발생하면 skeleton만 제거하고, 그렇지 않더라도 iframe은 그대로 남겨둔다.
   iframe.addEventListener('load', () => {
     iframe.classList.add('loaded');
     if(skeleton) skeleton.remove();
   });
 
-  iframe.addEventListener('error', () => {
-    iframe.closest('[data-frame-host]')?.remove();
-    if(skeleton) skeleton.remove();
-    if(fallback) fallback.hidden = false;
-  });
-
   iframe.src = iframe.dataset.src;
+
+  // 일부 브라우저/환경에서는 차단된 iframe이 load 이벤트를 전혀 발생시키지 않을 수 있으므로,
+  // 일정 시간 후에는 skeleton만 제거해 빈 미리보기 영역이라도 보이게 한다 (실패 문구는 띄우지 않음).
+  setTimeout(() => { if(skeleton) skeleton.remove(); }, 4000);
 }
 
 function mountPreviews(){
