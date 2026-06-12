@@ -8,9 +8,6 @@ const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxIdTswZ_itVr10
 /* 최근 등록된 작품으로 표시할 개수 (시트 맨 아래쪽 N개) */
 const NEW_COUNT = 3;
 
-/* 미리보기 iframe 로딩 제한 시간 (ms) — 초과 시 fallback 표시 */
-const PREVIEW_TIMEOUT = 6000;
-
 const grid = document.getElementById('grid');
 const filtersEl = document.getElementById('filters');
 const reduce = window.matchMedia('(prefers-reduced-motion:reduce)').matches;
@@ -24,12 +21,26 @@ let query = "";
 /* helpers                                                     */
 /* ---------------------------------------------------------- */
 
-function isValidUrl(url){
-  if(!url) return false;
+/* 시트에서 가져온 URL 값을 정리해서 유효한 절대 URL로 변환 (실패 시 null) */
+function normalizeUrl(raw){
+  if(!raw) return null;
+
+  let url = String(raw).trim();
+  url = url.replace(/\s+/g, "");
+  if(!url) return null;
+
+  if(!/^https?:\/\//i.test(url)){
+    url = "https://" + url;
+  }
+
   try{
-    const u = new URL(url);
-    return u.protocol === 'http:' || u.protocol === 'https:';
-  }catch{ return false; }
+    const parsed = new URL(url);
+    if(parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return null;
+    return parsed.href;
+  }catch(e){
+    console.warn("Invalid URL:", raw);
+    return null;
+  }
 }
 
 function escapeHTML(str){
@@ -55,11 +66,24 @@ async function loadData(){
     const data = await res.json();
 
     const items = (Array.isArray(data) ? data : [])
-      .filter(item => item && item.studentName && item.studentName.trim() && item.url && item.url.trim());
+      .filter(item => item && item.studentName && item.studentName.trim())
+      .map(item => ({
+        ...item,
+        rawUrl: item.url,
+        url: normalizeUrl(item.url),
+      }));
 
     // 최신 등록 순으로 정렬 (시트 행 순서가 클수록 최근 등록)
     items.sort((a, b) => (b.row ?? 0) - (a.row ?? 0));
     items.forEach((item, idx) => { item.isNew = idx < NEW_COUNT; });
+
+    console.table(items.map(w => ({
+      name: w.studentName,
+      className: w.className,
+      rawUrl: w.rawUrl,
+      normalizedUrl: w.url,
+      valid: !!w.url,
+    })));
 
     allWorks = items;
     classNames = [...new Set(allWorks.map(w=>w.className).filter(Boolean))];
@@ -128,7 +152,7 @@ function render(){
 /* ---------------------------------------------------------- */
 
 function cardHTML(item){
-  const hasUrl = isValidUrl(item.url);
+  const hasUrl = !!item.url;
   const title = item.title ? escapeHTML(item.title) : `${escapeHTML(item.studentName)}의 자기소개 웹앱`;
   const desc = item.description
     ? `<p class="card-desc">${escapeHTML(item.description)}</p>`
@@ -200,21 +224,18 @@ function loadPreview(iframe){
   const skeleton = wrap.querySelector('[data-skeleton]');
   const fallback = wrap.querySelector('[data-fallback]');
 
-  const timer = setTimeout(() => showFallback(), PREVIEW_TIMEOUT);
-
-  function showFallback(){
-    clearTimeout(timer);
-    iframe.closest('[data-frame-host]')?.remove();
-    if(skeleton) skeleton.remove();
-    if(fallback) fallback.hidden = false;
-  }
-
+  // cross-origin iframe은 contentWindow/contentDocument 접근이 차단되므로
+  // load 이벤트만으로 성공 처리하고, 네트워크 자체가 실패한 경우(error)에만 대체 화면을 띄운다.
   iframe.addEventListener('load', () => {
-    clearTimeout(timer);
     iframe.classList.add('loaded');
     if(skeleton) skeleton.remove();
   });
-  iframe.addEventListener('error', showFallback);
+
+  iframe.addEventListener('error', () => {
+    iframe.closest('[data-frame-host]')?.remove();
+    if(skeleton) skeleton.remove();
+    if(fallback) fallback.hidden = false;
+  });
 
   iframe.src = iframe.dataset.src;
 }
