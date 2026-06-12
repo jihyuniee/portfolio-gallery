@@ -5,7 +5,7 @@
 /* ⚠️ Google Apps Script Web App URL을 여기에 입력하세요.
    배포 방법: Apps Script 편집기 > 배포 > 새 배포 > 웹 앱
    (실행 대상: 나, 액세스 권한: 모든 사용자) 후 생성된 URL을 아래에 붙여넣기 */
-const APPS_SCRIPT_URL = "YOUR_APPS_SCRIPT_WEB_APP_URL_HERE";
+const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxIdTswZ_itVr10CBajBKSOuB3SfnyO2ugZeU0Ke6bysOkL558l9Z0SmaW0b8I6kp7O/exec";
 
 const grid = document.getElementById('grid');
 const filtersEl = document.getElementById('filters');
