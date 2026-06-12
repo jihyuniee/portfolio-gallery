@@ -4,14 +4,14 @@
    ============================================================ */
 
 :root{
-  --bg:#FAFAFB;
+  --bg:#FFFFFF;
   --surface:#FFFFFF;
-  --border:#E8E9EC;
-  --border-strong:#DCDEE3;
+  --border:#EAEAEA;
+  --border-strong:#DADADA;
 
-  --ink:#1A1B23;
-  --ink-2:#6B6E78;
-  --ink-3:#A0A3AC;
+  --ink:#111111;
+  --ink-2:#666666;
+  --ink-3:#999999;
 
   --accent:#4F5BD5;
   --accent-soft:#EEF0FD;
@@ -139,21 +139,34 @@ a{color:inherit; text-decoration:none}
 .card.in{opacity:1; transform:none}
 .card:hover{transform:translateY(-5px); box-shadow:var(--shadow-hover); border-color:var(--border-strong)}
 
-/* preview area */
+/* preview area — 카드의 약 80% */
 .preview-wrap{
-  position:relative; aspect-ratio:16/10; background:var(--accent-soft);
+  position:relative; aspect-ratio:4/3.4; background:var(--accent-soft);
   border-bottom:1px solid var(--border); overflow:hidden;
 }
-.preview-wrap .preview-img{
-  position:absolute; inset:0; width:100%; height:100%;
-  object-fit:cover; object-position:top;
-  opacity:0; transition:opacity .4s ease;
+
+/* iframe을 카드 너비에 맞춰 축소 렌더링 (실제 웹페이지가 통째로 보이는 느낌) */
+.iframe-scale{
+  position:absolute; top:0; left:0;
+  width:1440px; height:1240px;
+  transform:scale(var(--frame-scale, .25));
+  transform-origin:top left;
+  transition:transform .45s cubic-bezier(.2,.7,.2,1);
 }
-.preview-wrap .preview-img.loaded{opacity:1}
+.preview-wrap .iframe-scale iframe{
+  display:block; width:1440px; height:1240px; border:0;
+  background:#fff;
+  opacity:0; transition:opacity .4s ease;
+  pointer-events:none;
+}
+.preview-wrap .iframe-scale iframe.loaded{opacity:1}
+
+/* hover 시 미리보기 살짝 확대 */
+.card:hover .iframe-scale{ transform:scale(calc(var(--frame-scale, .25) * 1.04)) }
 
 /* skeleton shimmer */
 .skeleton{
-  position:absolute; inset:0;
+  position:absolute; inset:0; z-index:1;
   background:linear-gradient(110deg, var(--accent-soft) 8%, #F5F6FE 18%, var(--accent-soft) 33%);
   background-size:200% 100%;
   animation:shimmer 1.4s linear infinite;
@@ -162,11 +175,12 @@ a{color:inherit; text-decoration:none}
 
 /* fallback (no preview) */
 .preview-fallback{
-  position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center;
-  gap:8px; color:var(--ink-3); background:var(--accent-soft);
+  position:absolute; inset:0; z-index:2; display:flex; flex-direction:column; align-items:center; justify-content:center;
+  gap:10px; color:var(--ink-3); background:var(--accent-soft); text-align:center; padding:20px;
 }
 .preview-fallback .icon{font-size:1.8rem; opacity:.6}
-.preview-fallback span{font-size:.78rem; font-weight:600}
+.preview-fallback span{font-size:.82rem; font-weight:600; color:var(--ink-2)}
+.preview-fallback .go-btn{margin-top:4px}
 
 /* NEW badge */
 .new-badge{

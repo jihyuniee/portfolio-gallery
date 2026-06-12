@@ -138,10 +138,13 @@ function cardHTML(item){
 
   const preview = hasUrl
     ? `<div class="skeleton" data-skeleton></div>
-       <img class="preview-img" data-src="${escapeAttr(thumbnailUrl(item.url))}" loading="lazy" alt="${title} 미리보기" />
+       <div class="iframe-scale" data-frame-host>
+         <iframe data-src="${escapeAttr(item.url)}" loading="lazy" tabindex="-1" aria-hidden="true" referrerpolicy="no-referrer" sandbox="allow-scripts allow-same-origin allow-forms allow-popups"></iframe>
+       </div>
        <div class="preview-fallback" data-fallback hidden>
          <span class="icon">🖼️</span>
-         <span>미리보기를 불러올 수 없어요</span>
+         <span>미리보기를 지원하지 않는 작품</span>
+         <a class="go-btn" href="${escapeAttr(item.url)}" target="_blank" rel="noopener noreferrer">클릭하여 작품 보기 →</a>
        </div>`
     : `<div class="preview-fallback">
          <span class="icon">🔗</span>
@@ -181,37 +184,48 @@ grid.addEventListener('click', e=>{
 });
 
 /* ---------------------------------------------------------- */
-/* preview thumbnail loading                                   */
+/* preview iframe loading (viewport lazy load)                 */
 /* ---------------------------------------------------------- */
 
-/* 외부 스크린샷 서비스(thum.io, 무료/키 불필요)로 작품 URL의 썸네일을 생성 */
-function thumbnailUrl(url){
-  return `https://image.thum.io/get/width/600/crop/800/noanimate/${encodeURIComponent(url)}`;
+const previewObserver = new IntersectionObserver((entries, observer) => {
+  entries.forEach(entry => {
+    if(!entry.isIntersecting) return;
+    loadPreview(entry.target);
+    observer.unobserve(entry.target);
+  });
+}, { rootMargin: '200px 0px' });
+
+function loadPreview(iframe){
+  const wrap = iframe.closest('.preview-wrap');
+  const skeleton = wrap.querySelector('[data-skeleton]');
+  const fallback = wrap.querySelector('[data-fallback]');
+
+  const timer = setTimeout(() => showFallback(), PREVIEW_TIMEOUT);
+
+  function showFallback(){
+    clearTimeout(timer);
+    iframe.closest('[data-frame-host]')?.remove();
+    if(skeleton) skeleton.remove();
+    if(fallback) fallback.hidden = false;
+  }
+
+  iframe.addEventListener('load', () => {
+    clearTimeout(timer);
+    iframe.classList.add('loaded');
+    if(skeleton) skeleton.remove();
+  });
+  iframe.addEventListener('error', showFallback);
+
+  iframe.src = iframe.dataset.src;
 }
 
 function mountPreviews(){
-  grid.querySelectorAll('.preview-wrap img[data-src]').forEach(img => {
-    const wrap = img.closest('.preview-wrap');
-    const skeleton = wrap.querySelector('[data-skeleton]');
-    const fallback = wrap.querySelector('[data-fallback]');
-
-    const timer = setTimeout(() => showFallback(), PREVIEW_TIMEOUT);
-
-    function showFallback(){
-      clearTimeout(timer);
-      img.remove();
-      if(skeleton) skeleton.remove();
-      if(fallback) fallback.hidden = false;
-    }
-
-    img.addEventListener('load', () => {
-      clearTimeout(timer);
-      img.classList.add('loaded');
-      if(skeleton) skeleton.remove();
-    });
-    img.addEventListener('error', showFallback);
-
-    img.src = img.dataset.src;
+  grid.querySelectorAll('.preview-wrap').forEach(wrap => {
+    const host = wrap.querySelector('[data-frame-host]');
+    const iframe = wrap.querySelector('iframe[data-src]');
+    if(!host || !iframe) return;
+    host.style.setProperty('--frame-scale', wrap.clientWidth / 1440);
+    previewObserver.observe(iframe);
   });
 }
 
