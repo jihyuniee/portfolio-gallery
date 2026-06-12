@@ -3,501 +3,74 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>한영외고 2학년 · AI 자기소개 웹앱 전시</title>
+<title>2026 HYFL Portfolio Gallery</title>
 
 <!-- Pretendard -->
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css" />
-
-<style>
-/* ============================================================
-   AI 자기소개 웹앱 전시 — White-cube Gallery
-   단일 파일 · HTML / CSS / JS only
-   톤: 오프화이트 벽 · 뮤트 그린 포인트 · 조용한 갤러리
-   ============================================================ */
-
-:root{
-  /* 벽 / 종이 */
-  --paper:#FAF8F3;
-  --paper-2:#F2EEE6;
-  --paper-3:#EAE4D9;
-  --mat:#FFFFFF;        /* 액자 매트 */
-  --line:#E4DDD0;
-  --line-soft:#EEE8DD;
-  /* 먹 */
-  --ink:#211F1A;
-  --ink-2:#6B675E;
-  --ink-3:#9C968A;
-  /* 포인트 (뮤트 그린) */
-  --green:#5A6E58;
-  --green-deep:#46583F;
-  --green-soft:#E7ECDF;
-  --green-tint:#DDE4D2;
-  /* 그림자 (따뜻하고 부드럽게, 발광 금지) */
-  --frame-shadow:0 1px 1px rgba(40,36,28,.04), 0 10px 22px -10px rgba(60,52,38,.28);
-  --frame-shadow-hi:0 2px 2px rgba(40,36,28,.05), 0 26px 46px -18px rgba(60,52,38,.4);
-}
-
-*{box-sizing:border-box;margin:0;padding:0}
-html{scroll-behavior:smooth}
-body{
-  font-family:'Pretendard Variable',Pretendard,-apple-system,BlinkMacSystemFont,system-ui,sans-serif;
-  background:var(--paper);
-  color:var(--ink);
-  font-weight:500; line-height:1.6;
-  -webkit-font-smoothing:antialiased;
-  overflow-x:hidden;
-}
-/* 아주 은은한 벽 명암 */
-body::before{
-  content:""; position:fixed; inset:0; z-index:-1; pointer-events:none;
-  background:
-    radial-gradient(120% 60% at 50% -10%, rgba(255,255,255,.6), transparent 60%),
-    radial-gradient(140% 90% at 50% 120%, rgba(60,52,38,.05), transparent 55%);
-}
-a{color:inherit; text-decoration:none}
-::selection{background:var(--green-tint); color:var(--green-deep)}
-::-webkit-scrollbar{width:11px;height:11px}
-::-webkit-scrollbar-thumb{background:#d8cfbe; border-radius:20px; border:3px solid var(--paper)}
-::-webkit-scrollbar-thumb:hover{background:#c8bda7}
-
-/* ============================ HEADER ============================ */
-.nav{
-  position:sticky; top:0; z-index:60;
-  background:rgba(250,248,243,.86);
-  backdrop-filter:saturate(120%) blur(12px);
-  -webkit-backdrop-filter:saturate(120%) blur(12px);
-  border-bottom:1px solid var(--line);
-}
-.nav-inner{
-  max-width:1260px; margin:0 auto; padding:13px 28px;
-  display:flex; align-items:center; gap:20px; flex-wrap:wrap;
-}
-.wordmark{display:flex; align-items:center; gap:11px; flex:0 0 auto}
-.wordmark .seal{
-  width:30px; height:30px; flex:0 0 auto; border-radius:50%;
-  border:1.5px solid var(--green); color:var(--green-deep);
-  display:grid; place-items:center; font-size:.62rem; font-weight:800; letter-spacing:.02em;
-}
-.wordmark b{font-weight:800; font-size:.96rem; letter-spacing:-.01em; line-height:1.1; display:block}
-.wordmark .sub{font-size:.7rem; color:var(--ink-2); letter-spacing:.14em; font-weight:600; text-transform:uppercase}
-
-/* 반(전시실) 탭 */
-.rooms{display:flex; gap:4px; flex:1 1 auto; flex-wrap:wrap; justify-content:center}
-.room-tab{
-  padding:8px 15px; border-radius:100px; font-size:.86rem; font-weight:700; font-family:inherit;
-  color:var(--ink-2); background:transparent; border:1px solid transparent; cursor:pointer;
-  transition:all .2s ease; white-space:nowrap;
-}
-.room-tab:hover{color:var(--ink); background:var(--paper-2)}
-.room-tab[aria-pressed="true"]{
-  color:var(--green-deep); background:var(--green-soft); border-color:var(--green-tint);
-}
-
-.search{position:relative; flex:0 0 auto; width:230px}
-.search input{
-  width:100%; padding:9px 14px 9px 38px; font-family:inherit; font-weight:500; font-size:.88rem;
-  color:var(--ink); background:var(--mat); border:1px solid var(--line); border-radius:100px;
-  transition:border-color .2s, box-shadow .2s;
-}
-.search input::placeholder{color:var(--ink-3)}
-.search input:focus{outline:none; border-color:var(--green); box-shadow:0 0 0 3px var(--green-soft)}
-.search svg{position:absolute; left:13px; top:50%; transform:translateY(-50%); width:16px; height:16px; color:var(--ink-3); pointer-events:none}
-
-/* ============================ INTRO ============================ */
-.intro{max-width:1260px; margin:0 auto; padding:62px 28px 30px; text-align:center}
-.intro .kicker{
-  font-size:.74rem; font-weight:700; letter-spacing:.26em; text-transform:uppercase; color:var(--green);
-  display:inline-flex; align-items:center; gap:12px; margin-bottom:22px;
-}
-.intro .kicker::before,.intro .kicker::after{content:""; width:30px; height:1px; background:var(--green); opacity:.5}
-.intro h1{
-  font-size:clamp(2.1rem,5vw,3.6rem); font-weight:800; letter-spacing:-.035em; line-height:1.08;
-}
-.intro h1 em{font-style:normal; color:var(--green-deep)}
-.intro p{margin:18px auto 0; max-width:560px; color:var(--ink-2); font-size:1.05rem}
-
-/* ============================ ROOM SIGN ============================ */
-.room-sign{
-  max-width:1260px; margin:0 auto 40px; padding:34px 28px 4px;
-  display:flex; align-items:flex-end; justify-content:space-between; gap:20px; flex-wrap:wrap;
-  border-bottom:1px solid var(--line);
-}
-.room-sign .left .rno{
-  font-size:.72rem; font-weight:700; letter-spacing:.2em; text-transform:uppercase; color:var(--ink-3);
-  display:flex; align-items:center; gap:10px;
-}
-.room-sign .left .rno .tick{width:14px; height:1px; background:var(--green)}
-.room-sign .left h2{font-size:clamp(1.5rem,3.4vw,2.3rem); font-weight:800; letter-spacing:-.03em; margin-top:9px}
-.room-sign .count{
-  font-size:.9rem; color:var(--ink-2); font-weight:600; font-variant-numeric:tabular-nums; padding-bottom:6px;
-}
-.room-sign .count b{color:var(--green-deep); font-weight:800}
-
-/* ============================ GALLERY WALL ============================ */
-.wall{max-width:1260px; margin:0 auto; padding:0 28px 40px}
-.grid{display:grid; grid-template-columns:repeat(4,1fr); gap:40px 30px}
-@media(max-width:1080px){.grid{grid-template-columns:repeat(2,1fr); gap:36px 26px}}
-@media(max-width:560px){.grid{grid-template-columns:1fr; gap:34px}}
-
-.work{
-  display:flex; flex-direction:column; align-items:center;
-  opacity:0; transform:translateY(18px);
-  transition:opacity .55s ease, transform .55s cubic-bezier(.2,.7,.2,1);
-}
-.work.in{opacity:1; transform:none}
-
-/* 액자 (매트 + 작품 + 부드러운 그림자) */
-.frame{
-  width:100%; background:var(--mat); padding:12px; border-radius:3px;
-  box-shadow:var(--frame-shadow);
-  transition:transform .35s cubic-bezier(.2,.7,.2,1), box-shadow .35s ease;
-  cursor:default;
-}
-.work.has-link .frame{cursor:pointer}
-.work.has-link:hover .frame{transform:translateY(-7px); box-shadow:var(--frame-shadow-hi)}
-
-.art{
-  position:relative; aspect-ratio:4/5; overflow:hidden; border-radius:1px;
-  background:var(--cover,#E0DAD0);
-  display:flex; align-items:center; justify-content:center;
-  box-shadow:inset 0 0 0 1px rgba(40,36,28,.06);
-}
-.art .monogram{
-  font-size:2.6rem; font-weight:800; letter-spacing:-.01em;
-  color:var(--cover-ink,#5a5247); opacity:.92; user-select:none; position:relative; z-index:1;
-}
-.art .ghost{
-  position:absolute; left:50%; bottom:-12%; transform:translateX(-50%);
-  font-size:8.5rem; font-weight:800; color:var(--cover-ink,#5a5247); opacity:.08; letter-spacing:-.03em;
-  line-height:1; user-select:none; z-index:0;
-}
-/* 라이브 미리보기 (호버, 데스크탑) */
-.art .preview{
-  position:absolute; inset:0; border:0; z-index:2; background:#fff;
-  opacity:0; transition:opacity .55s ease; pointer-events:none;
-}
-.art .preview.loaded{opacity:1}
-/* 호버 "작품 보기" 라벨 */
-.art .seehint{
-  position:absolute; z-index:3; left:0; right:0; bottom:0; padding:14px 12px 12px;
-  display:flex; justify-content:center;
-  background:linear-gradient(180deg,transparent,rgba(33,31,26,.5));
-  opacity:0; transition:opacity .3s ease;
-}
-.work.has-link:hover .art .seehint{opacity:1}
-.art .seehint span{
-  font-size:.78rem; font-weight:700; color:#fff; letter-spacing:.02em;
-  display:inline-flex; align-items:center; gap:6px;
-}
-
-/* 명패 (museum placard) */
-.placard{
-  width:100%; max-width:240px; margin:16px auto 0; text-align:left;
-  display:flex; flex-direction:column; gap:3px;
-}
-.placard .pnum{
-  font-size:.7rem; font-weight:700; letter-spacing:.16em; color:var(--green); font-variant-numeric:tabular-nums;
-  display:flex; align-items:center; gap:8px;
-}
-.placard .pnum::before{content:""; width:12px; height:1px; background:var(--green); opacity:.7}
-.placard .pname{font-size:1.06rem; font-weight:800; letter-spacing:-.01em; color:var(--ink)}
-.placard .ptitle{font-size:.85rem; color:var(--ink-2); font-style:italic}
-.placard .proom{font-size:.74rem; color:var(--ink-3); font-weight:600; margin-top:2px}
-
-/* 빈 전시실 */
-.empty{
-  grid-column:1/-1; text-align:center; padding:70px 20px; color:var(--ink-2);
-}
-.empty .ef{
-  width:84px; height:104px; margin:0 auto 22px; border:1.5px solid var(--line);
-  background:var(--mat); border-radius:3px; box-shadow:var(--frame-shadow);
-  display:grid; place-items:center;
-}
-.empty .ef i{width:36px; height:46px; border:1px dashed var(--ink-3); border-radius:1px; opacity:.5; font-style:normal; display:block}
-.empty b{display:block; color:var(--ink); font-weight:800; font-size:1.1rem; margin-bottom:6px}
-.empty span{font-size:.92rem}
-
-/* ============================ FOOTER ============================ */
-.footer{
-  border-top:1px solid var(--line); margin-top:30px;
-  max-width:1260px; margin-left:auto; margin-right:auto; padding:42px 28px 64px; text-align:center;
-}
-.footer .fw{display:inline-flex; align-items:center; gap:10px; font-weight:800; color:var(--ink)}
-.footer .fw .seal{
-  width:24px; height:24px; border-radius:50%; border:1.5px solid var(--green); color:var(--green-deep);
-  display:grid; place-items:center; font-size:.55rem; font-weight:800;
-}
-.footer p{color:var(--ink-2); font-size:.9rem; margin-top:13px}
-.footer .meta{color:var(--ink-3); font-size:.76rem; letter-spacing:.05em; margin-top:16px}
-
-@media(prefers-reduced-motion:reduce){
-  *{animation:none!important; transition:none!important}
-  .work{opacity:1; transform:none}
-  html{scroll-behavior:auto}
-}
-@media(max-width:680px){
-  .nav-inner{padding:11px 16px; gap:13px}
-  .rooms{order:3; flex-basis:100%; justify-content:flex-start}
-  .search{flex:1 1 auto; width:auto; margin-left:auto}
-  .intro,.wall,.room-sign{padding-left:18px; padding-right:18px}
-}
-</style>
+<link rel="stylesheet" href="style.css" />
 </head>
 <body>
 
 <!-- ============================ HEADER ============================ -->
 <header class="nav">
   <div class="nav-inner">
-    <div class="wordmark">
-      <span class="seal">2학년</span>
+    <div class="brand">
+      <span class="emoji">🎨</span>
       <span>
-        <b>AI 자기소개 웹앱 전시</b>
-        <span class="sub">한영외국어고등학교</span>
+        <b>HYFL Portfolio Gallery</b>
+        <span class="sub" style="display:block">2026</span>
       </span>
     </div>
 
-    <nav class="rooms" id="rooms" aria-label="전시실">
-      <button class="room-tab" data-room="전체" aria-pressed="true">전체</button>
-      <button class="room-tab" data-room="1반" aria-pressed="false">1반</button>
-      <button class="room-tab" data-room="2반" aria-pressed="false">2반</button>
-      <button class="room-tab" data-room="3반" aria-pressed="false">3반</button>
-      <button class="room-tab" data-room="4반" aria-pressed="false">4반</button>
-      <button class="room-tab" data-room="5반" aria-pressed="false">5반</button>
-    </nav>
-
     <label class="search">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
-      <input id="search" type="search" placeholder="이름 · 학번" autocomplete="off" aria-label="작품 검색" />
+      <input id="search" type="search" placeholder="이름 · 작품 제목 검색" autocomplete="off" aria-label="작품 검색" />
     </label>
   </div>
 </header>
 
-<!-- ============================ INTRO ============================ -->
-<section class="intro">
-  <span class="kicker">2026 Exhibition</span>
-  <h1>학생들이 만든<br><em>자기소개 웹앱</em> 전시</h1>
-  <p>한영외국어고등학교 2학년 학생들이 AI와 함께 직접 만든 웹 작품을 전시합니다. 반을 골라 전시실을 둘러보세요.</p>
+<!-- ============================ HERO ============================ -->
+<section class="hero">
+  <span class="kicker">✨ 2026 Exhibition</span>
+  <h1>2026 HYFL Portfolio Gallery</h1>
+  <p>AI와 함께 만든 우리들의 자기소개 웹앱 전시관 — 우리 반 친구들의 작품을 구경해 보세요!</p>
+
+  <div class="stats">
+    <div class="stat">
+      <div class="num pink" id="stat-works">0</div>
+      <div class="label">전체 작품 수</div>
+    </div>
+    <div class="stat">
+      <div class="num purple" id="stat-classes">0</div>
+      <div class="label">참여 반 수</div>
+    </div>
+    <div class="stat">
+      <div class="num blue">💛</div>
+      <div class="label">우리들의 이야기</div>
+    </div>
+  </div>
 </section>
 
-<!-- ============================ ROOM SIGN ============================ -->
-<div class="room-sign">
-  <div class="left">
-    <div class="rno"><span class="tick"></span><span id="room-no">ROOM · ALL</span></div>
-    <h2 id="room-title">전체 전시실</h2>
-  </div>
-  <div class="count" id="room-count"></div>
+<!-- ============================ CLASS FILTERS ============================ -->
+<nav class="filters" id="filters" aria-label="반 필터"></nav>
+
+<!-- ============================ SECTION HEAD ============================ -->
+<div class="section-head">
+  <h2><span class="pin">🖼️</span>작품 전시</h2>
+  <div class="count" id="section-count"></div>
 </div>
 
-<!-- ============================ GALLERY WALL ============================ -->
+<!-- ============================ GALLERY GRID ============================ -->
 <main class="wall">
   <div class="grid" id="grid"></div>
 </main>
 
 <footer class="footer">
-  <div class="fw"><span class="seal">2026</span>AI 자기소개 웹앱 전시</div>
-  <p>한영외국어고등학교 2학년 · 학생 웹 작품 전시</p>
+  <div class="fw">🎓 2026 HYFL Portfolio Gallery</div>
+  <p>AI와 함께 만든 우리들의 자기소개 웹앱 전시관</p>
   <div class="meta">Built with HTML · CSS · JavaScript</div>
 </footer>
 
-<script>
-/* ============================================================
-   데이터 — 반별 배열. 이 객체만 수정하면 전 화면 자동 반영.
-   { number, name, title(작품명·선택), url(없으면 null) }
-   ============================================================ */
-const classes = {
-  "1반": [
-    { number:"21101", name:"컴도리", title:"", url:"https://jhyun178-ux.github.io/my-profile/" },
-    { number:"20101", name:"김나윤", title:"", url:null },
-    { number:"20102", name:"김나은", title:"", url:"https://36c2187-svg.github.io/naeun-/" },
-    { number:"20103", name:"김나현", title:"", url:"https://36c9894-hue.github.io/nahyunkim/" },
-    { number:"20104", name:"김선희", title:"", url:"https://36c5792-bot.github.io/-/" },
-    { number:"20105", name:"김정빈", title:"", url:"https://36c7472-creator.github.io/my-profile--/" },
-    { number:"20107", name:"도은서", title:"", url:"https://goguma201.github.io/InseoDo/" },
-    { number:"20108", name:"문지효", title:"", url:"https://36c6396-cmd.github.io/jihyo/" },
-    { number:"20109", name:"박선유", title:"", url:"https://applehamster.github.io/parkSunyu/" },
-    { number:"20110", name:"서몽진", title:"", url:"https://36c4057-droid.github.io/jinn/" },
-    { number:"20111", name:"서유찬", title:"", url:"https://ronnie0805.github.io/yuchan/" },
-    { number:"20112", name:"안하린", title:"", url:"https://ahnharyn-ops.github.io/ahnharyn/" },
-    { number:"20113", name:"염지유", title:"", url:"https://36c4277-netizen.github.io/yum" },
-    { number:"20114", name:"육소민", title:"", url:null },
-    { number:"20115", name:"윤효빈", title:"", url:"https://36c1293-sudo.github.io/hyobeen/" },
-    { number:"20116", name:"이소연", title:"", url:"https://36c8177-hue.github.io/soyeon/" },
-    { number:"20117", name:"이은채", title:"", url:"https://eunchae091022.github.io/eunchaerepositor" },
-    { number:"20118", name:"이지수", title:"", url:"https://36c-max.github.io/AI-201-flexible-miggularg" },
-    { number:"20119", name:"전소현", title:"", url:null },
-    { number:"20120", name:"조승연", title:"", url:"https://36c3470-eng.github.io/seungyon/" },
-    { number:"20121", name:"최서현", title:"", url:"https://36c4123.github.io/sophia/" },
-    { number:"20122", name:"최성아", title:"", url:"https://36c0837-dotcom.github.io/jenny/" },
-    { number:"20123", name:"홍나현", title:"", url:null },
-    { number:"20124", name:"홍예진", title:"", url:"https://36c4109-bot.github.io/yejin/" },
-  ],
-  "2반": [],   // 같은 형식으로 채워 넣으세요
-  "3반": [],
-  "4반": [],
-  "5반": [],
-};
-
-/* ============================================================
-   한글 이름 → 로마자 이니셜 (모노그램)
-   예) 김나은 → KN,  박선유 → PSY
-   ============================================================ */
-const CHO = ['K','K','N','D','D','R','M','P','P','S','S','','J','J','C','K','T','P','H'];
-const JUNG_GLIDE = ['','','Y','Y','','','Y','Y','','W','W','','Y','','W','W','W','Y','','',''];
-const JUNG_VOWEL = ['A','A','Y','Y','E','E','Y','Y','O','W','W','O','Y','U','W','W','W','Y','E','U','I'];
-function initials(name){
-  let out='';
-  for(const ch of name){
-    const c=ch.charCodeAt(0)-0xAC00;
-    if(c<0||c>11171){ if(/[A-Za-z]/.test(ch)) out+=ch.toUpperCase(); continue; }
-    const cho=Math.floor(c/588), jung=Math.floor((c%588)/28);
-    out += CHO[cho] ? CHO[cho] : JUNG_GLIDE[jung];
-  }
-  out=out.slice(0,3);
-  if(out.length<2){
-    let alt='';
-    for(const ch of name){
-      const c=ch.charCodeAt(0)-0xAC00;
-      if(c<0||c>11171){ if(/[A-Za-z]/.test(ch)) alt+=ch.toUpperCase(); continue; }
-      const cho=Math.floor(c/588), jung=Math.floor((c%588)/28);
-      alt += CHO[cho] ? CHO[cho] : JUNG_VOWEL[jung];
-    }
-    out=alt.slice(0,2);
-  }
-  return out||name[0];
-}
-
-/* 차분한 매트 톤 커버 (작품이 주인공이 되도록 채도 낮게) */
-const COVERS = [
-  ['#DCE3D4','#46583F'], // sage
-  ['#E9E0CE','#6E5E3E'], // sand
-  ['#E5D7CC','#73584A'], // clay
-  ['#D8DFE2','#46565E'], // dusty blue
-  ['#E1DAD0','#564F45'], // warm gray
-  ['#DDE0CB','#535738'], // olive
-  ['#E7DAD6','#6E534F'], // blush
-  ['#D6DED1','#475244'], // pale green
-];
-function hash(s){let h=0;for(let i=0;i<s.length;i++){h=(h<<5)-h+s.charCodeAt(i);h|=0;}return Math.abs(h);}
-
-/* 전체 작품 목록 (반 정보 부착) */
-const allWorks = [];
-Object.keys(classes).forEach(room=>{
-  classes[room].forEach(s=> allWorks.push({...s, room}));
-});
-
-const ROOM_NO = {"전체":"ROOM · ALL","1반":"ROOM 01","2반":"ROOM 02","3반":"ROOM 03","4반":"ROOM 04","5반":"ROOM 05"};
-const ROOM_TITLE = {"전체":"전체 전시실","1반":"2학년 1반 전시실","2반":"2학년 2반 전시실","3반":"2학년 3반 전시실","4반":"2학년 4반 전시실","5반":"2학년 5반 전시실"};
-
-const grid = document.getElementById('grid');
-const canHover = window.matchMedia('(hover:hover)').matches;
-const reduce = window.matchMedia('(prefers-reduced-motion:reduce)').matches;
-
-let currentRoom = "전체";
-let query = "";
-
-function workHTML(s, showRoom){
-  const ini = initials(s.name);
-  const cover = COVERS[hash(s.name)%COVERS.length];
-  const seehint = s.url ? `<div class="seehint"><span>작품 보기 →</span></div>` : '';
-  const title = s.title ? `<div class="ptitle">${s.title}</div>` : '';
-  const roomTag = showRoom ? `<div class="proom">2학년 ${s.room}</div>` : '';
-  return `<figure class="work ${s.url?'has-link':''}" data-name="${s.name}" data-num="${s.number}" ${s.url?`data-url="${s.url}"`:''}>
-    <div class="frame">
-      <div class="art" style="--cover:${cover[0]}; --cover-ink:${cover[1]}">
-        <span class="ghost">${ini}</span>
-        <span class="monogram">${ini}</span>
-        ${seehint}
-      </div>
-    </div>
-    <figcaption class="placard">
-      <div class="pnum">${s.number}</div>
-      <div class="pname">${s.name}</div>
-      ${title}
-      ${roomTag}
-    </figcaption>
-  </figure>`;
-}
-
-function currentList(){
-  const base = currentRoom==="전체" ? allWorks : (classes[currentRoom]||[]).map(s=>({...s, room:currentRoom}));
-  if(!query) return base;
-  const q = query.toLowerCase();
-  return base.filter(s => s.name.toLowerCase().includes(q) || s.number.includes(q));
-}
-
-function reveal(){
-  const works = [...grid.querySelectorAll('.work')];
-  if(reduce){ works.forEach(w=>w.classList.add('in')); return; }
-  works.forEach((w,i)=> setTimeout(()=>w.classList.add('in'), Math.min(i,14)*45));
-}
-
-function render(){
-  document.getElementById('room-no').textContent = ROOM_NO[currentRoom];
-  document.getElementById('room-title').textContent = ROOM_TITLE[currentRoom];
-
-  const list = currentList();
-  const showRoom = currentRoom==="전체";
-
-  if(list.length===0){
-    const msg = query
-      ? {b:"검색 결과가 없어요", s:"다른 이름이나 학번으로 다시 찾아보세요."}
-      : {b:"곧 작품이 걸립니다", s:"이 전시실은 현재 준비 중입니다."};
-    grid.innerHTML = `<div class="empty"><div class="ef"><i></i></div><b>${msg.b}</b><span>${msg.s}</span></div>`;
-    document.getElementById('room-count').innerHTML = `<b>0</b>점 전시 중`;
-    return;
-  }
-
-  grid.innerHTML = list.map(s=>workHTML(s, showRoom)).join('');
-  document.getElementById('room-count').innerHTML = `<b>${list.length}</b>점 전시 중`;
-  reveal();
-  mountHoverPreviews();
-}
-
-/* 작품 클릭 → 새 탭 */
-grid.addEventListener('click', e=>{
-  const work = e.target.closest('.work.has-link');
-  if(work && work.dataset.url) window.open(work.dataset.url,'_blank','noopener');
-});
-
-/* 호버 시 실제 사이트 미리보기 (데스크탑) */
-function mountHoverPreviews(){
-  if(!canHover) return;
-  grid.querySelectorAll('.work.has-link').forEach(work=>{
-    const url = work.dataset.url;
-    let mounted=false;
-    work.addEventListener('mouseenter', ()=>{
-      if(mounted) return; mounted=true;
-      const art = work.querySelector('.art');
-      const w = art.clientWidth, h = art.clientHeight;
-      const renderW = 1200, scale = w/renderW;
-      const f = document.createElement('iframe');
-      f.className='preview'; f.setAttribute('loading','lazy'); f.setAttribute('scrolling','no');
-      f.setAttribute('tabindex','-1'); f.setAttribute('aria-hidden','true');
-      f.style.width=renderW+'px'; f.style.height=(h/scale)+'px';
-      f.style.transform=`scale(${scale})`; f.style.transformOrigin='top left';
-      f.addEventListener('load', ()=>f.classList.add('loaded'));
-      f.src=url;
-      art.insertBefore(f, art.querySelector('.seehint'));
-    });
-  });
-}
-
-/* 반 탭 */
-document.getElementById('rooms').addEventListener('click', e=>{
-  const tab = e.target.closest('.room-tab'); if(!tab) return;
-  document.querySelectorAll('.room-tab').forEach(t=>t.setAttribute('aria-pressed', t===tab));
-  currentRoom = tab.dataset.room;
-  render();
-  if(window.scrollY > 320){ document.querySelector('.room-sign').scrollIntoView({behavior: reduce?'auto':'smooth', block:'start'}); }
-});
-
-/* 검색 */
-document.getElementById('search').addEventListener('input', e=>{
-  query = e.target.value.trim();
-  render();
-});
-
-render();
-</script>
+<script src="script.js"></script>
 </body>
 </html>
