@@ -19,9 +19,9 @@ const SHEET_ID = "11PCEcOCjOpgvsirb6lBp1WyZflEafmvL1wyMBz3kl88";
 // key: 결과 JSON 필드명, value: 시트의 헤더 텍스트
 const COLUMN_MAP = {
   studentName: "이름",
-  title: "작품 제목",
-  description: "한 줄 소개",
-  url: "작품 URL",
+  title: "",            // 이 시트에는 작품 제목 컬럼이 없음
+  description: "",      // 이 시트에는 한 줄 소개 컬럼이 없음
+  url: "웹사이트 주소",
 };
 
 function doGet(e) {
@@ -37,7 +37,7 @@ function doGet(e) {
     const headers = values[0].map(h => String(h).trim());
     const colIndex = {};
     Object.keys(COLUMN_MAP).forEach(key => {
-      colIndex[key] = headers.indexOf(COLUMN_MAP[key]);
+      colIndex[key] = COLUMN_MAP[key] ? headers.indexOf(COLUMN_MAP[key]) : -1;
     });
 
     for (let i = 1; i < values.length; i++) {
