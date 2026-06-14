@@ -411,59 +411,128 @@ function renderTodayPick(){
 
 /* ---------------------------------------------------------- */
 /* 방명록                                                       */
+/* (Firebase 연결 시 Firestore 사용, 미연결 시 localStorage)      */
 /* ---------------------------------------------------------- */
 
-async function loadGuestbook(){
-  if(!db) return;
+const GUESTBOOK_LOCAL_KEY = 'guestbook_entries';
+const GUESTBOOK_DISPLAY_LIMIT = 10;
+
+function formatGuestbookDate(value){
+  let d;
+  if(value && typeof value.toDate === 'function') d = value.toDate();
+  else if(value) d = new Date(value);
+  else d = new Date();
+
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  return `${yyyy}.${mm}.${dd}`;
+}
+
+function readLocalGuestbook(){
+  try{
+    const raw = localStorage.getItem(GUESTBOOK_LOCAL_KEY);
+    const list = raw ? JSON.parse(raw) : [];
+    return Array.isArray(list) ? list : [];
+  }catch(e){
+    console.warn('방명록(local)을 읽지 못했어요:', e);
+    return [];
+  }
+}
+
+function writeLocalGuestbook(list){
+  try{
+    localStorage.setItem(GUESTBOOK_LOCAL_KEY, JSON.stringify(list));
+  }catch(e){
+    console.warn('방명록(local)을 저장하지 못했어요:', e);
+  }
+}
+
+function renderGuestbook(entries){
   const listEl = document.getElementById('guestbook-list');
   const countEl = document.getElementById('guestbook-count');
   if(!listEl) return;
 
+  if(countEl) countEl.innerHTML = `<b>${entries.length}</b>개의 메시지`;
+
+  if(entries.length===0){
+    listEl.innerHTML = `<li class="guestbook-empty">아직 방명록이 없어요. 첫 메시지를 남겨주세요!</li>`;
+    return;
+  }
+
+  listEl.innerHTML = entries.slice(0, GUESTBOOK_DISPLAY_LIMIT).map(entry => `
+    <li class="guestbook-item">
+      <span class="guestbook-name">${escapeHTML(entry.name)}</span>
+      <span class="guestbook-msg">${escapeHTML(entry.message)}</span>
+      <span class="guestbook-date">${escapeHTML(formatGuestbookDate(entry.createdAt))}</span>
+    </li>`).join('');
+}
+
+async function loadGuestbook(){
+  const listEl = document.getElementById('guestbook-list');
+  if(!listEl) return;
+
+  if(!db){
+    renderGuestbook(readLocalGuestbook());
+    return;
+  }
+
   try{
-    const q = query(collection(db, 'guestbook'), orderBy('createdAt', 'desc'), limit(20));
+    const q = query(collection(db, 'guestbook'), orderBy('createdAt', 'desc'), limit(GUESTBOOK_DISPLAY_LIMIT));
     const snap = await getDocs(q);
-    const entries = snap.docs.map(d => d.data());
-
-    if(countEl) countEl.innerHTML = `<b>${entries.length}</b>개의 메시지`;
-
-    if(entries.length===0){
-      listEl.innerHTML = `<li class="guestbook-empty">아직 방명록이 없어요. 첫 메시지를 남겨주세요!</li>`;
-      return;
-    }
-
-    listEl.innerHTML = entries.map(entry => `
-      <li class="guestbook-item">
-        <span class="guestbook-msg">"${escapeHTML(entry.message)}"</span>
-        <span class="guestbook-name">- ${escapeHTML(entry.name)}</span>
-      </li>`).join('');
+    renderGuestbook(snap.docs.map(d => d.data()));
   }catch(e){
     console.warn('방명록을 불러오지 못했어요:', e);
-    listEl.innerHTML = `<li class="guestbook-empty">방명록을 불러오지 못했어요.</li>`;
+    renderGuestbook(readLocalGuestbook());
   }
+}
+
+async function saveGuestbookEntry(name, message){
+  const entry = { name, message, createdAt: new Date().toISOString() };
+
+  if(!db){
+    const list = readLocalGuestbook();
+    list.unshift(entry);
+    writeLocalGuestbook(list.slice(0, GUESTBOOK_DISPLAY_LIMIT));
+    return;
+  }
+
+  await addDoc(collection(db, 'guestbook'), {
+    name: entry.name,
+    message: entry.message,
+    createdAt: serverTimestamp(),
+  });
+  await setDoc(doc(db, 'meta', 'stats'), { totalGuestbook: increment(1) }, { merge: true });
+}
+
+function showGuestbookNotice(message){
+  const noticeEl = document.getElementById('guestbook-notice');
+  if(!noticeEl) return;
+  noticeEl.textContent = message;
+  noticeEl.classList.toggle('show', !!message);
 }
 
 const guestbookForm = document.getElementById('guestbook-form');
 if(guestbookForm){
   guestbookForm.addEventListener('submit', async e => {
     e.preventDefault();
-    if(!db) return;
 
     const nameInput = document.getElementById('guestbook-name');
     const messageInput = document.getElementById('guestbook-message');
     const name = nameInput.value.trim();
     const message = messageInput.value.trim();
-    if(!name || !message) return;
 
+    if(!name || !message){
+      showGuestbookNotice('이름과 메시지를 모두 입력해 주세요.');
+      return;
+    }
+
+    showGuestbookNotice('');
     const submitBtn = guestbookForm.querySelector('button');
     submitBtn.disabled = true;
 
     try{
-      await addDoc(collection(db, 'guestbook'), {
-        name: name.slice(0, 20),
-        message: message.slice(0, 120),
-        createdAt: serverTimestamp(),
-      });
-      await setDoc(doc(db, 'meta', 'stats'), { totalGuestbook: increment(1) }, { merge: true });
+      await saveGuestbookEntry(name.slice(0, 20), message.slice(0, 120));
 
       nameInput.value = '';
       messageInput.value = '';
@@ -471,6 +540,7 @@ if(guestbookForm){
       await loadWarmStats();
     }catch(err){
       console.warn('방명록 등록에 실패했어요:', err);
+      showGuestbookNotice('방명록 등록에 실패했어요. 잠시 후 다시 시도해 주세요.');
     }finally{
       submitBtn.disabled = false;
     }
@@ -486,7 +556,14 @@ async function loadWarmStats(){
   if(!wrap) return;
 
   if(!db){
-    wrap.innerHTML = '';
+    const guestbook = readLocalGuestbook().length;
+    wrap.innerHTML = `
+      <div class="warm-stats-inner">
+        <p class="warm-stats-title">지금까지</p>
+        <div class="warm-stats-row">
+          <span>💬 ${guestbook.toLocaleString()}개의 방명록이 남겨졌어요</span>
+        </div>
+      </div>`;
     return;
   }
 

@@ -285,14 +285,21 @@ a{color:inherit; text-decoration:none}
 .guestbook-form button:hover{opacity:.85}
 .guestbook-form button:disabled{opacity:.5; cursor:not-allowed}
 
+.guestbook-notice{
+  display:none; font-size:.82rem; font-weight:600; color:var(--accent);
+  margin:-12px 0 16px;
+}
+.guestbook-notice.show{display:block}
+
 .guestbook-list{list-style:none; display:grid; grid-template-columns:repeat(2,1fr); gap:12px}
 @media(max-width:760px){.guestbook-list{grid-template-columns:1fr}}
 .guestbook-item{
   background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-md);
   padding:14px 16px; display:flex; flex-direction:column; gap:6px;
 }
-.guestbook-msg{font-size:.9rem; color:var(--ink); line-height:1.5}
-.guestbook-name{font-size:.78rem; color:var(--ink-3); font-weight:700}
+.guestbook-name{font-size:.8rem; color:var(--ink); font-weight:800}
+.guestbook-msg{font-size:.88rem; color:var(--ink-2); line-height:1.5}
+.guestbook-date{font-size:.74rem; color:var(--ink-3); font-weight:600}
 .guestbook-empty{
   grid-column:1/-1; text-align:center; color:var(--ink-3); font-size:.88rem;
   padding:20px; border:1px dashed var(--border); border-radius:var(--radius-md);
