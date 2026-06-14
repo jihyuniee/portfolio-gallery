@@ -2,6 +2,13 @@
    2026 HYFL Portfolio Gallery — script.js
    ============================================================ */
 
+import { firebaseConfig } from './firebase-config.js';
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
+import {
+  getFirestore, doc, getDoc, getDocs, setDoc, addDoc,
+  collection, increment, serverTimestamp, query, orderBy, limit,
+} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+
 /* Google Apps Script Web App URL */
 const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxIdTswZ_itVr10CBajBKSOuB3SfnyO2ugZeU0Ke6bysOkL558l9Z0SmaW0b8I6kp7O/exec";
 
@@ -15,7 +22,54 @@ const reduce = window.matchMedia('(prefers-reduced-motion:reduce)').matches;
 let allWorks = [];
 let classNames = [];
 let currentClass = "전체";
-let query = "";
+let query_ = "";
+
+/* ---------------------------------------------------------- */
+/* firebase                                                    */
+/* ---------------------------------------------------------- */
+
+let db = null;
+try{
+  if(firebaseConfig && firebaseConfig.apiKey && !String(firebaseConfig.apiKey).includes('YOUR_')){
+    const app = initializeApp(firebaseConfig);
+    db = getFirestore(app);
+  }
+}catch(e){
+  console.warn('Firebase 초기화에 실패했어요:', e);
+}
+
+const reactions = new Map(); // workId -> { views, cheers }
+
+function workId(item){
+  return [item.className, item.studentNumber, item.studentName]
+    .map(v => String(v||'').trim())
+    .join('__')
+    .toLowerCase()
+    .replace(/[^a-z0-9가-힣]+/g, '-')
+    .replace(/(^-+|-+$)/g, '') || 'work';
+}
+
+async function loadReactions(){
+  if(!db) return;
+  try{
+    const snap = await getDocs(collection(db, 'works'));
+    snap.forEach(d => reactions.set(d.id, d.data()));
+  }catch(e){
+    console.warn('반응 데이터를 불러오지 못했어요:', e);
+  }
+}
+
+async function bumpField(id, field, metaField){
+  if(!db) return;
+  try{
+    await setDoc(doc(db, 'works', id), { [field]: increment(1) }, { merge: true });
+    if(metaField){
+      await setDoc(doc(db, 'meta', 'stats'), { [metaField]: increment(1) }, { merge: true });
+    }
+  }catch(e){
+    console.warn('반응을 저장하지 못했어요:', e);
+  }
+}
 
 /* ---------------------------------------------------------- */
 /* helpers                                                     */
@@ -77,6 +131,8 @@ async function loadData(){
     items.sort((a, b) => (b.row ?? 0) - (a.row ?? 0));
     items.forEach((item, idx) => { item.isNew = idx < NEW_COUNT; });
 
+    items.forEach(item => { item.id = workId(item); });
+
     console.table(items.map(w => ({
       name: w.studentName,
       className: w.className,
@@ -88,12 +144,18 @@ async function loadData(){
     allWorks = items;
     classNames = [...new Set(allWorks.map(w=>w.className).filter(Boolean))];
 
+    await loadReactions();
+
     renderStats();
     renderFilters();
     render();
+    renderTodayPick();
   }catch(err){
     showState('😢', '작품 목록을 불러오지 못했습니다.', '잠시 후 다시 새로고침해 주세요.');
   }
+
+  loadGuestbook();
+  loadWarmStats();
 }
 
 /* ---------------------------------------------------------- */
@@ -115,8 +177,8 @@ function renderFilters(){
 
 function currentList(){
   let list = currentClass==="전체" ? allWorks : allWorks.filter(w=>w.className===currentClass);
-  if(query){
-    const q = query.toLowerCase();
+  if(query_){
+    const q = query_.toLowerCase();
     list = list.filter(w =>
       (w.studentName||'').toLowerCase().includes(q) ||
       (w.title||'').toLowerCase().includes(q) ||
@@ -135,7 +197,7 @@ function render(){
   document.getElementById('section-count').innerHTML = `<b>${list.length}</b>개 작품`;
 
   if(list.length===0){
-    const msg = query
+    const msg = query_
       ? {icon:'🔍', b:'검색 결과가 없어요', s:'다른 이름이나 작품 제목으로 다시 찾아보세요.'}
       : {icon:'🖼️', b:'아직 전시된 작품이 없어요', s:'곧 멋진 작품들이 채워질 예정이에요!'};
     showState(msg.icon, msg.b, msg.s);
@@ -145,6 +207,7 @@ function render(){
   grid.innerHTML = list.map(cardHTML).join('');
   reveal();
   mountPreviews();
+  mountReactionWatchers();
 }
 
 /* ---------------------------------------------------------- */
@@ -174,7 +237,17 @@ function cardHTML(item){
     ? `<a class="go-btn" href="${escapeAttr(item.url)}" target="_blank" rel="noopener noreferrer">작품 보러가기 →</a>`
     : `<span class="go-btn disabled">링크 확인 필요</span>`;
 
-  return `<article class="card" ${hasUrl?`data-url="${escapeAttr(item.url)}"`:''}>
+  const data = reactions.get(item.id) || {};
+  const views = data.views || 0;
+  const cheers = data.cheers || 0;
+  const cheered = localStorage.getItem(`cheered_${item.id}`) === '1';
+
+  const reactionsHTML = `<div class="card-reactions">
+    <span class="view-count" data-views-for="${escapeAttr(item.id)}">👀 ${views}명이 읽어봤어요</span>
+    <button class="cheer-btn" type="button" data-cheer-id="${escapeAttr(item.id)}" aria-pressed="${cheered}">💛 응원 <b>${cheers}</b></button>
+  </div>`;
+
+  return `<article class="card" data-id="${escapeAttr(item.id)}" ${hasUrl?`data-url="${escapeAttr(item.url)}"`:''}>
     <div class="preview-wrap">
       ${newBadge}
       ${preview}
@@ -191,6 +264,7 @@ function cardHTML(item){
       </div>
       ${desc}
       ${btn}
+      ${reactionsHTML}
     </div>
   </article>`;
 }
@@ -200,6 +274,29 @@ grid.addEventListener('click', e=>{
   if(e.target.closest('a, button')) return;
   const card = e.target.closest('.card[data-url]');
   if(card) window.open(card.dataset.url, '_blank', 'noopener');
+});
+
+/* "응원해요" 클릭 — 같은 사용자의 반복 클릭은 localStorage로 방지 */
+grid.addEventListener('click', e=>{
+  const btn = e.target.closest('.cheer-btn');
+  if(!btn) return;
+
+  const id = btn.dataset.cheerId;
+  const key = `cheered_${id}`;
+  if(localStorage.getItem(key) === '1') return;
+
+  localStorage.setItem(key, '1');
+  btn.setAttribute('aria-pressed', 'true');
+
+  const data = reactions.get(id) || {};
+  data.cheers = (data.cheers || 0) + 1;
+  reactions.set(id, data);
+
+  const countEl = btn.querySelector('b');
+  if(countEl) countEl.textContent = data.cheers;
+
+  bumpField(id, 'cheers', 'totalCheers');
+  loadWarmStats();
 });
 
 /* ---------------------------------------------------------- */
@@ -244,6 +341,177 @@ function mountPreviews(){
 }
 
 /* ---------------------------------------------------------- */
+/* 조회수 — 카드가 화면에 한 번 보이면 "읽어봤어요" 카운트 증가     */
+/* (같은 브라우저에서는 작품별로 한 번만 카운트)                    */
+/* ---------------------------------------------------------- */
+
+const viewObserver = new IntersectionObserver((entries, observer) => {
+  entries.forEach(entry => {
+    if(!entry.isIntersecting) return;
+    registerView(entry.target);
+    observer.unobserve(entry.target);
+  });
+}, { rootMargin: '0px', threshold: 0.4 });
+
+function registerView(card){
+  const id = card.dataset.id;
+  if(!id) return;
+
+  const key = `viewed_${id}`;
+  if(localStorage.getItem(key) === '1') return;
+  localStorage.setItem(key, '1');
+
+  const data = reactions.get(id) || {};
+  data.views = (data.views || 0) + 1;
+  reactions.set(id, data);
+
+  const label = card.querySelector(`[data-views-for="${CSS.escape(id)}"]`);
+  if(label) label.textContent = `👀 ${data.views}명이 읽어봤어요`;
+
+  bumpField(id, 'views', 'totalViews');
+  loadWarmStats();
+}
+
+function mountReactionWatchers(){
+  grid.querySelectorAll('.card[data-id]').forEach(card => viewObserver.observe(card));
+}
+
+/* ---------------------------------------------------------- */
+/* 오늘의 자기소개                                              */
+/* ---------------------------------------------------------- */
+
+function renderTodayPick(){
+  const wrap = document.getElementById('today-pick');
+  if(!wrap || allWorks.length===0) return;
+
+  const item = allWorks[Math.floor(Math.random() * allWorks.length)];
+  const title = item.title ? escapeHTML(item.title) : `${escapeHTML(item.studentName)}의 자기소개 웹앱`;
+  const desc = item.description ? escapeHTML(item.description) : '오늘은 이 친구의 이야기를 만나보세요.';
+  const number = item.studentNumber ? `${escapeHTML(item.studentNumber)} · ` : '';
+
+  wrap.innerHTML = `
+    <div class="today-inner">
+      <div class="today-head">
+        <span class="kicker">✨ 오늘의 자기소개</span>
+        <p>오늘은 이 친구의 이야기를 읽어볼까요?</p>
+      </div>
+      <a class="today-card" href="${item.url ? escapeAttr(item.url) : '#'}" target="_blank" rel="noopener noreferrer">
+        <div class="today-card-body">
+          <div class="card-title">${title}</div>
+          <div class="card-meta">
+            <span class="class-tag">${escapeHTML(item.className)}</span>
+            <span class="student-info">${number}${escapeHTML(item.studentName)}</span>
+          </div>
+          <p class="card-desc">${desc}</p>
+        </div>
+        <span class="go-btn">읽으러 가기 →</span>
+      </a>
+    </div>`;
+}
+
+/* ---------------------------------------------------------- */
+/* 방명록                                                       */
+/* ---------------------------------------------------------- */
+
+async function loadGuestbook(){
+  if(!db) return;
+  const listEl = document.getElementById('guestbook-list');
+  const countEl = document.getElementById('guestbook-count');
+  if(!listEl) return;
+
+  try{
+    const q = query(collection(db, 'guestbook'), orderBy('createdAt', 'desc'), limit(20));
+    const snap = await getDocs(q);
+    const entries = snap.docs.map(d => d.data());
+
+    if(countEl) countEl.innerHTML = `<b>${entries.length}</b>개의 메시지`;
+
+    if(entries.length===0){
+      listEl.innerHTML = `<li class="guestbook-empty">아직 방명록이 없어요. 첫 메시지를 남겨주세요!</li>`;
+      return;
+    }
+
+    listEl.innerHTML = entries.map(entry => `
+      <li class="guestbook-item">
+        <span class="guestbook-msg">"${escapeHTML(entry.message)}"</span>
+        <span class="guestbook-name">- ${escapeHTML(entry.name)}</span>
+      </li>`).join('');
+  }catch(e){
+    console.warn('방명록을 불러오지 못했어요:', e);
+    listEl.innerHTML = `<li class="guestbook-empty">방명록을 불러오지 못했어요.</li>`;
+  }
+}
+
+const guestbookForm = document.getElementById('guestbook-form');
+if(guestbookForm){
+  guestbookForm.addEventListener('submit', async e => {
+    e.preventDefault();
+    if(!db) return;
+
+    const nameInput = document.getElementById('guestbook-name');
+    const messageInput = document.getElementById('guestbook-message');
+    const name = nameInput.value.trim();
+    const message = messageInput.value.trim();
+    if(!name || !message) return;
+
+    const submitBtn = guestbookForm.querySelector('button');
+    submitBtn.disabled = true;
+
+    try{
+      await addDoc(collection(db, 'guestbook'), {
+        name: name.slice(0, 20),
+        message: message.slice(0, 120),
+        createdAt: serverTimestamp(),
+      });
+      await setDoc(doc(db, 'meta', 'stats'), { totalGuestbook: increment(1) }, { merge: true });
+
+      nameInput.value = '';
+      messageInput.value = '';
+      await loadGuestbook();
+      await loadWarmStats();
+    }catch(err){
+      console.warn('방명록 등록에 실패했어요:', err);
+    }finally{
+      submitBtn.disabled = false;
+    }
+  });
+}
+
+/* ---------------------------------------------------------- */
+/* 따뜻한 반응 통계                                             */
+/* ---------------------------------------------------------- */
+
+async function loadWarmStats(){
+  const wrap = document.getElementById('warm-stats');
+  if(!wrap) return;
+
+  if(!db){
+    wrap.innerHTML = '';
+    return;
+  }
+
+  try{
+    const snap = await getDoc(doc(db, 'meta', 'stats'));
+    const data = snap.exists() ? snap.data() : {};
+    const views = data.totalViews || 0;
+    const cheers = data.totalCheers || 0;
+    const guestbook = data.totalGuestbook || 0;
+
+    wrap.innerHTML = `
+      <div class="warm-stats-inner">
+        <p class="warm-stats-title">지금까지</p>
+        <div class="warm-stats-row">
+          <span>👀 ${views.toLocaleString()}번 읽혔어요</span>
+          <span>💛 ${cheers.toLocaleString()}번 응원받았어요</span>
+          <span>💬 ${guestbook.toLocaleString()}개의 방명록이 남겨졌어요</span>
+        </div>
+      </div>`;
+  }catch(e){
+    console.warn('통계를 불러오지 못했어요:', e);
+  }
+}
+
+/* ---------------------------------------------------------- */
 /* reveal animation                                            */
 /* ---------------------------------------------------------- */
 
@@ -265,7 +533,7 @@ filtersEl.addEventListener('click', e=>{
 });
 
 document.getElementById('search').addEventListener('input', e=>{
-  query = e.target.value.trim();
+  query_ = e.target.value.trim();
   render();
 });
 
