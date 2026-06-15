@@ -37,10 +37,11 @@
    ============================================================ */
 
 export const firebaseConfig = {
-  apiKey: "YOUR_FIREBASE_API_KEY",
-  authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
-  projectId: "YOUR_PROJECT_ID",
-  storageBucket: "YOUR_PROJECT_ID.appspot.com",
-  messagingSenderId: "YOUR_SENDER_ID",
-  appId: "YOUR_APP_ID",
+  apiKey: "AIzaSyB2nU1x48UddQack7WgMvOOXrWKxGEAeac",
+  authDomain: "hyfl-portfolio-gallery.firebaseapp.com",
+  projectId: "hyfl-portfolio-gallery",
+  storageBucket: "hyfl-portfolio-gallery.firebasestorage.app",
+  messagingSenderId: "567255733520",
+  appId: "1:567255733520:web:ec064cefc28db243b18195",
+  measurementId: "G-3XS47CLCDJ"
 };
